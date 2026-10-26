@@ -1,0 +1,36 @@
+/**
+ * Journal actions for the filter, in the same set as `actionsByScope` in
+ * `apps/api/src/backoffice/backoffice-activity.service.ts` (checked by a test).
+ */
+export const activityActions = [
+  { value: "AUTH_LOGIN_SUCCEEDED", label: "Вход в систему" },
+  { value: "AUTH_LOGIN_FAILED", label: "Неудачная попытка входа" },
+  { value: "AUTH_LOGIN_ACCOUNT_LOCKED", label: "Вход временно приостановлен" },
+  { value: "AUTH_LOGIN_ADDRESS_RATE_LIMITED", label: "Ограничен адрес входа" },
+  { value: "AUTH_LOGIN_APP_FORBIDDEN", label: "Вход запрещён" },
+  { value: "AUTH_TWO_FACTOR_ENABLED", label: "Подключена 2FA" },
+  { value: "AUTH_TWO_FACTOR_FAILED", label: "Неверный код 2FA" },
+  { value: "AUTH_TWO_FACTOR_ACCOUNT_LOCKED", label: "Подтверждение 2FA приостановлено" },
+  { value: "AUTH_RECOVERY_CODE_USED", label: "Использован резервный код" },
+  { value: "AUTH_RECOVERY_CODES_REGENERATED", label: "Перевыпущены резервные коды" },
+  { value: "AUTH_LOGOUT", label: "Выход из системы" },
+  { value: "AUTH_EXPIRED_SESSIONS_CLEANED", label: "Удалены истёкшие сессии" },
+  { value: "PRODUCT_CREATED", label: "Добавлен товар" },
+  { value: "PRODUCT_UPDATED", label: "Товар обновлён" },
+  { value: "PRODUCT_IMAGE_UPDATED", label: "Фото товара обновлено" },
+  { value: "PRODUCTS_BULK_UPDATED", label: "Товары обновлены" },
+  { value: "PRODUCTS_DELETED", label: "Товары удалены" },
+  { value: "STOCK_CHANGED", label: "Остаток изменён" },
+  { value: "STOCK_BULK_CHANGED", label: "Остатки изменены" },
+  { value: "CATEGORY_CREATED", label: "Добавлена категория" },
+  { value: "CATEGORY_UPDATED", label: "Категория обновлена" },
+  { value: "CATEGORIES_BULK_UPDATED", label: "Категории обновлены" },
+  { value: "CATEGORIES_DELETED", label: "Категории удалены" },
+  { value: "SETTINGS_UPDATED", label: "Настройки каталога обновлены" },
+  { value: "USER_CREATED", label: "Добавлен пользователь" },
+  { value: "USER_UPDATED", label: "Пользователь обновлён" },
+  { value: "USER_PASSWORD_CHANGED", label: "Пароль изменён" },
+  { value: "USER_TWO_FACTOR_RESET", label: "Сброшена 2FA" },
+  { value: "USER_SESSIONS_REVOKED", label: "Сессии завершены" },
+  { value: "USER_SESSION_REVOKED", label: "Сессия завершена" },
+] as const;

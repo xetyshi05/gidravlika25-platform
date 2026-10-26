@@ -1,0 +1,48 @@
+# INF-04: update pull requests for dependencies, base images (pinned by digest)
+# and GitHub Actions (pinned by commit SHA). Weekly and grouped, so that a week
+# of updates arrives as a few pull requests; every one goes through CI.
+# Python packages of the image-worker are not here: requirements.lock is compiled
+# with hashes by pip-compile (see its header), which Dependabot cannot regenerate.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /services/image-worker
+      - /deploy/postgres
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      base-images:
+        patterns: ["*"]
+
+  - package-ecosystem: docker-compose
+    directories:
+      - /
+      - /e2e
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      compose-images:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

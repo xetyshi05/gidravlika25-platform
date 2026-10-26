@@ -1,0 +1,42 @@
+{
+  "name": "gidravlika25",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
+    "e2e:infra": "docker compose -f e2e/compose.yml up -d --wait",
+    "e2e:build": "node e2e/scripts/build.mjs",
+    "e2e": "pnpm --filter e2e test:browser",
+    "e2e:down": "docker compose -f e2e/compose.yml down",
+    "api:contract": "pnpm --filter @gidravlika25/api-contract generate",
+    "api:contract:check": "pnpm --filter @gidravlika25/api-contract check",
+    "db:seed": "pnpm --dir apps/api db:seed",
+    "licenses:check": "node config/check-licenses.mjs npm"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.10.11"
+  },
+  "pnpm": {
+    "overrides": {
+      "body-parser": "2.4.0",
+      "deepmerge-ts": "8.0.2",
+      "fast-uri": "3.1.7",
+      "multer": "2.5.0",
+      "mysql2": "3.24.3",
+      "proxy-addr": "2.0.8",
+      "qs": "6.16.0",
+      "source-map-js": "1.2.2"
+    }
+  }
+}

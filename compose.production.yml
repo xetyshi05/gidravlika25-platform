@@ -1,0 +1,418 @@
+name: gidravlika25
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-10m}
+    max-file: "${LOG_MAX_FILES:-5}"
+
+services:
+  postgres:
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # PostgreSQL 18 stores clusters in a versioned subdirectory.  Mount its
+      # parent directory so the image can initialise and upgrade correctly.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    cpus: ${POSTGRES_CPUS:-2}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-1536m}
+    logging: *default-logging
+    networks: [application]
+
+  # Creates and realigns database roles and object ownership (INF-01). Runs as
+  # the PostgreSQL superuser before every migration; idempotent.
+  db-roles:
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGOPTIONS: >-
+        -c gidravlika.migrator_password=${DB_MIGRATOR_PASSWORD:?DB_MIGRATOR_PASSWORD is required}
+        -c gidravlika.runtime_password=${DB_RUNTIME_PASSWORD:?DB_RUNTIME_PASSWORD is required}
+    command: ["psql", "--no-psqlrc", "--set=ON_ERROR_STOP=1", "--file=/database-roles.sql"]
+    volumes:
+      - ./apps/api/prisma/database-roles.sql:/database-roles.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    cpus: 0.5
+    mem_limit: 128m
+    logging: *default-logging
+    networks: [application]
+
+  # One-shot migration job with migrator credentials (REL-01). The API never
+  # changes the schema itself.
+  migrate:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/api:${IMAGE_TAG}
+    restart: "no"
+    entrypoint: ["dumb-init", "--", "/usr/local/bin/gidravlika-migrate"]
+    environment:
+      NODE_ENV: production
+      # No update check or telemetry request from the Prisma CLI.
+      CHECKPOINT_DISABLE: "1"
+      PRISMA_HIDE_UPDATE_MESSAGE: "1"
+      DATABASE_URL: postgresql://migrator:${DB_MIGRATOR_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      db-roles:
+        condition: service_completed_successfully
+    cpus: ${MIGRATE_CPUS:-0.5}
+    mem_limit: ${MIGRATE_MEMORY_LIMIT:-512m}
+    logging: *default-logging
+    networks: [application]
+
+  api:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/api:${IMAGE_TAG}
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    # REL-03: SIGTERM first drains requests (SHUTDOWN_DRAIN_TIMEOUT_MS), then closes the app.
+    stop_grace_period: 60s
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 4000
+      # DML-only role; see apps/api/prisma/database-roles.sql.
+      DATABASE_URL: postgresql://app_runtime:${DB_RUNTIME_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      BOOTSTRAP_SECRET: ${BOOTSTRAP_SECRET}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      PUBLIC_REQUEST_RATE_LIMIT_MAX: ${PUBLIC_REQUEST_RATE_LIMIT_MAX:-10}
+      PUBLIC_REQUEST_RATE_LIMIT_WINDOW_MS: ${PUBLIC_REQUEST_RATE_LIMIT_WINDOW_MS:-60000}
+      PUBLIC_REQUEST_CONTACT_LIMIT_MAX: ${PUBLIC_REQUEST_CONTACT_LIMIT_MAX:-5}
+      PUBLIC_REQUEST_CONTACT_LIMIT_WINDOW_MS: ${PUBLIC_REQUEST_CONTACT_LIMIT_WINDOW_MS:-3600000}
+      PUBLIC_REQUEST_GLOBAL_LIMIT_MAX: ${PUBLIC_REQUEST_GLOBAL_LIMIT_MAX:-200}
+      PUBLIC_REQUEST_GLOBAL_LIMIT_WINDOW_MS: ${PUBLIC_REQUEST_GLOBAL_LIMIT_WINDOW_MS:-3600000}
+      ALTCHA_HMAC_SECRET: ${ALTCHA_HMAC_SECRET}
+      OPS_STATUS_TOKEN: ${OPS_STATUS_TOKEN}
+      OPS_ALERT_SERVER_ERRORS: ${OPS_ALERT_SERVER_ERRORS:-5}
+      OPS_ALERT_P95_MS: ${OPS_ALERT_P95_MS:-2500}
+      OPS_BACKUP_MAX_AGE_HOURS: ${OPS_BACKUP_MAX_AGE_HOURS:-26}
+      # Requests in flight get this long after SIGTERM; below stop_grace_period.
+      SHUTDOWN_DRAIN_TIMEOUT_MS: ${SHUTDOWN_DRAIN_TIMEOUT_MS:-50000}
+      ALTCHA_COST: ${ALTCHA_COST:-1000}
+      ALTCHA_MAX_COUNTER: ${ALTCHA_MAX_COUNTER:-10000}
+      ALTCHA_EXPIRES_SECONDS: ${ALTCHA_EXPIRES_SECONDS:-1200}
+      REQUEST_FIRST_RESPONSE_MINUTES: ${REQUEST_FIRST_RESPONSE_MINUTES:-60}
+      PERSONAL_DATA_DOCUMENT_VERSION: ${PERSONAL_DATA_DOCUMENT_VERSION}
+      PERSONAL_DATA_DOCUMENT_HASH: ${PERSONAL_DATA_DOCUMENT_HASH}
+      PERSONAL_DATA_RETENTION_ENABLED: ${PERSONAL_DATA_RETENTION_ENABLED:-true}
+      PERSONAL_DATA_RETENTION_DAYS: ${PERSONAL_DATA_RETENTION_DAYS:-1095}
+      PERSONAL_DATA_RETENTION_INTERVAL_HOURS: ${PERSONAL_DATA_RETENTION_INTERVAL_HOURS:-24}
+      PERSONAL_DATA_RETENTION_BATCH_SIZE: ${PERSONAL_DATA_RETENTION_BATCH_SIZE:-100}
+      PERSONAL_DATA_RETENTION_DRY_RUN: ${PERSONAL_DATA_RETENTION_DRY_RUN:-false}
+      DADATA_API_KEY: ${DADATA_API_KEY}
+      DADATA_REQUEST_TIMEOUT_MS: ${DADATA_REQUEST_TIMEOUT_MS:-5000}
+      DADATA_DAILY_LIMIT: ${DADATA_DAILY_LIMIT:-9000}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      S3_REQUEST_TIMEOUT_MS: ${S3_REQUEST_TIMEOUT_MS:-15000}
+      # The host path is mounted privately at a fixed path in the container.
+      MEDIA_ORIGINALS_DIR: /media/originals
+      STORAGE_CLEANUP_ENABLED: ${STORAGE_CLEANUP_ENABLED:-true}
+      STORAGE_CLEANUP_INTERVAL_MINUTES: ${STORAGE_CLEANUP_INTERVAL_MINUTES:-15}
+      MEDIA_RECONCILE_ENABLED: ${MEDIA_RECONCILE_ENABLED:-true}
+      MEDIA_RECONCILE_DRY_RUN: ${MEDIA_RECONCILE_DRY_RUN:-true}
+      MEDIA_RECONCILE_INTERVAL_HOURS: ${MEDIA_RECONCILE_INTERVAL_HOURS:-24}
+      MEDIA_RECONCILE_GRACE_HOURS: ${MEDIA_RECONCILE_GRACE_HOURS:-24}
+      BACKGROUND_REMOVAL_URL: ${BACKGROUND_REMOVAL_URL:-http://image-worker:8000}
+      CATALOG_REVALIDATION_URL: ${CATALOG_REVALIDATION_URL:-http://web:3000/api/revalidate-catalog}
+      CATALOG_REVALIDATION_SECRET: ${CATALOG_REVALIDATION_SECRET}
+      CATALOG_REVALIDATION_TIMEOUT_MS: ${CATALOG_REVALIDATION_TIMEOUT_MS:-5000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    cpus: ${API_CPUS:-1.5}
+    mem_limit: ${API_MEMORY_LIMIT:-1024m}
+    logging: *default-logging
+    networks: [application]
+    volumes:
+      - ${MEDIA_ORIGINALS_DIR:-/var/lib/gidravlika-media/originals}:/media/originals
+
+  image-worker:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/image-worker:${IMAGE_TAG}
+    build:
+      context: ./services/image-worker
+    restart: unless-stopped
+    # Lets a background removal in progress finish on docker stop.
+    stop_grace_period: 60s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 3m
+    cpus: ${IMAGE_WORKER_CPUS:-1}
+    mem_limit: ${IMAGE_WORKER_MEMORY_LIMIT:-1536m}
+    logging: *default-logging
+    networks: [application]
+
+  web:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/web:${IMAGE_TAG}
+    build:
+      context: .
+      target: next
+      secrets:
+        - catalog_revalidation_secret
+      args:
+        APP: web
+        APP_ENV: production
+        API_URL: ${API_URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY}
+        S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+        S3_ALLOW_LOCAL_IP: ${S3_ALLOW_LOCAL_IP:-false}
+    restart: unless-stopped
+    # Time to finish requests in flight after SIGTERM.
+    stop_grace_period: 20s
+    environment:
+      APP_ENV: production
+      API_URL: ${API_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      S3_ALLOW_LOCAL_IP: ${S3_ALLOW_LOCAL_IP:-false}
+      CATALOG_REVALIDATION_SECRET: ${CATALOG_REVALIDATION_SECRET}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck: &next-healthcheck
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    cpus: ${WEB_CPUS:-1}
+    mem_limit: ${WEB_MEMORY_LIMIT:-768m}
+    logging: *default-logging
+    networks: [application]
+
+  crm:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/crm:${IMAGE_TAG}
+    build:
+      context: .
+      target: next
+      args:
+        APP: crm
+        APP_ENV: production
+        API_URL: ${API_URL}
+        S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+    restart: unless-stopped
+    # Time to finish requests in flight after SIGTERM.
+    stop_grace_period: 20s
+    environment:
+      APP_ENV: production
+      API_URL: ${API_URL}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck: *next-healthcheck
+    cpus: ${CRM_CPUS:-0.75}
+    mem_limit: ${CRM_MEMORY_LIMIT:-512m}
+    logging: *default-logging
+    networks: [application]
+
+  backoffice:
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/backoffice:${IMAGE_TAG}
+    build:
+      context: .
+      target: next
+      args:
+        APP: backoffice
+        APP_ENV: production
+        API_URL: ${API_URL}
+        S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+        BACKOFFICE_ORIGIN: ${BACKOFFICE_ORIGIN}
+    restart: unless-stopped
+    # Time to finish requests in flight after SIGTERM.
+    stop_grace_period: 20s
+    environment:
+      APP_ENV: production
+      API_URL: ${API_URL}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      BACKOFFICE_ORIGIN: ${BACKOFFICE_ORIGIN}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck: *next-healthcheck
+    cpus: ${BACKOFFICE_CPUS:-0.75}
+    mem_limit: ${BACKOFFICE_MEMORY_LIMIT:-512m}
+    logging: *default-logging
+    networks: [application]
+
+  nginx:
+    image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    restart: unless-stopped
+    environment:
+      SITE_HOST: ${SITE_HOST}
+      SITE_WWW_HOST: ${SITE_WWW_HOST}
+      API_HOST: ${API_HOST}
+      CRM_HOST: ${CRM_HOST}
+      BACKOFFICE_HOST: ${BACKOFFICE_HOST}
+      TLS_CERT_NAME: ${TLS_CERT_NAME}
+      NGINX_ENVSUBST_FILTER: ^(SITE_HOST|SITE_WWW_HOST|API_HOST|CRM_HOST|BACKOFFICE_HOST|TLS_CERT_NAME)$$
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/production.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/nginx/proxy-common.conf:/etc/nginx/conf.d/proxy-common.conf:ro
+      - ./deploy/nginx/access:/etc/nginx/access:ro
+      - ./deploy/nginx/reload-certificates.sh:/docker-entrypoint.d/99-reload-certificates.sh:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      web:
+        condition: service_healthy
+      crm:
+        condition: service_healthy
+      backoffice:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --spider --header='Host: ${SITE_HOST}' http://127.0.0.1/nginx-health || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    cpus: ${NGINX_CPUS:-0.5}
+    mem_limit: ${NGINX_MEMORY_LIMIT:-256m}
+    logging: *default-logging
+    networks: [application]
+
+  certbot:
+    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    profiles: [tools]
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    cpus: ${CERTBOT_CPUS:-0.5}
+    mem_limit: ${CERTBOT_MEMORY_LIMIT:-256m}
+    logging: *default-logging
+    networks: [application]
+
+  certbot-renew:
+    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - while true; do certbot renew --webroot --webroot-path /var/www/certbot --quiet; sleep 43200; done
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    cpus: ${CERTBOT_CPUS:-0.5}
+    mem_limit: ${CERTBOT_MEMORY_LIMIT:-256m}
+    logging: *default-logging
+    networks: [application]
+
+  backup:
+    build:
+      context: ./deploy/postgres
+    image: ${CONTAINER_IMAGE_PREFIX:-gidravlika25}/postgres-backup:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      VERIFY_BACKUP_RESTORE: ${VERIFY_BACKUP_RESTORE:-true}
+      BACKUP_S3_URI: ${BACKUP_S3_URI:-}
+      # age public key; off-site copies are encrypted to it (DATA-07).
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      AWS_ENDPOINT_URL: ${BACKUP_S3_ENDPOINT:-}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION:-ru-central1}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - ${BACKUP_DIRECTORY:-./backups}:/backups
+      # Private originals are snapshotted next to each database archive (MEDIA-06).
+      - ${MEDIA_ORIGINALS_DIR:-/var/lib/gidravlika-media/originals}:/media/originals:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "find /backups -maxdepth 1 -name 'gidravlika-*.dump' -mmin -1500 | grep -q ."]
+      interval: 5m
+      timeout: 5s
+      retries: 3
+      start_period: 2m
+    cpus: ${BACKUP_CPUS:-1}
+    mem_limit: ${BACKUP_MEMORY_LIMIT:-768m}
+    logging: *default-logging
+    networks: [application]
+
+volumes:
+  postgres_data:
+  certbot_certs:
+  certbot_www:
+
+networks:
+  application:
+    driver: bridge
+
+secrets:
+  catalog_revalidation_secret:
+    environment: CATALOG_REVALIDATION_SECRET

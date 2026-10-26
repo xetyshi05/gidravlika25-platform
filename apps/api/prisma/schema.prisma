@@ -1,0 +1,504 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  legacyId    Int?     @unique
+  name        String
+  slug        String   @unique
+  description String?
+  parentId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+}
+
+model Product {
+  id               String  @id @default(cuid())
+  legacyId         Int?    @unique
+  sku              String  @unique
+  name             String
+  slug             String  @unique
+  description      String?
+  shortDescription String?
+  price            Decimal @db.Decimal(12, 2)
+
+  pistonDiameterMm   Int?
+  rodDiameterMm      Int?
+  strokeMm           Int?
+  collapsedLengthMm  Int?
+  maxPressureMpa     Decimal? @db.Decimal(6, 2)
+  nominalPressureMpa Decimal? @db.Decimal(6, 2)
+
+  imageKey         String?
+  imageOriginalKey String?
+
+  stockQuantity Int     @default(0)
+  isActive      Boolean @default(true)
+  isFeatured    Boolean @default(false)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  cartRequestItems CartRequestItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, categoryId])
+  @@index([isActive, stockQuantity(sort: Desc), name])
+  @@index([price])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_name_trgm_idx")
+  @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_sku_trgm_idx")
+}
+
+model CatalogSettings {
+  id                String   @id @default("catalog")
+  lowStockThreshold Int      @default(5)
+  showOutOfStock    Boolean  @default(true)
+  showPrices        Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+enum SiteMediaKind {
+  HERO
+  GALLERY
+  MAIN_GALLERY
+}
+
+model SiteMedia {
+  id          String        @id @default(cuid())
+  kind        SiteMediaKind
+  imageKey    String        @unique
+  originalKey String?
+  alt         String
+  title       String?
+  position    Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([kind, position])
+}
+
+/// Last successful run of a background operation outside the API, e.g. the
+/// backup container (REL-03); read by GET /ops/status.
+model OperationHeartbeat {
+  name        String   @id
+  succeededAt DateTime
+  details     Json?
+}
+
+enum StoredFileLocation {
+  PUBLIC_BUCKET
+  ORIGINALS
+}
+
+/// Outbox of files to delete (S3-01): written in the transaction that stops
+/// referencing them and processed after commit and by a periodic worker.
+model StorageCleanup {
+  id            String             @id @default(cuid())
+  location      StoredFileLocation
+  key           String
+  reason        String
+  attempts      Int                @default(0)
+  lastError     String?
+  nextAttemptAt DateTime           @default(now())
+  createdAt     DateTime           @default(now())
+
+  @@unique([location, key])
+  @@index([nextAttemptAt])
+}
+
+enum RequestType {
+  CART
+  CUSTOM
+  WHOLESALE
+}
+
+enum RequestStatus {
+  NEW
+  IN_PROGRESS
+  CONTACTED
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryType {
+  PICKUP
+  DELIVERY
+}
+
+enum PaymentType {
+  BANK_TRANSFER
+  ON_RECEIPT
+}
+
+enum RequestActivityType {
+  REQUEST_CREATED
+  STATUS_CHANGED
+  MANAGER_ASSIGNED
+  COMMENT_ADDED
+}
+
+enum CustomerActivityType {
+  CREATED
+  UPDATED
+  REQUEST_ATTACHED
+  MERGED
+  ANONYMIZED
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+}
+
+enum ConsentType {
+  PERSONAL_DATA
+}
+
+enum ConsentSource {
+  WEB_FORM
+  LEGACY_IMPORT
+}
+
+model Customer {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  middleName      String?
+  phone           String
+  normalizedPhone String?
+  email           String?
+  normalizedEmail String?
+  company         String?
+  anonymizedAt    DateTime?
+  /// Newest `Request.createdAt` of this customer, kept by the trigger
+  /// `Request_customer_last_request_at` (PERF-01); null without requests.
+  lastRequestAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  requests   Request[]
+  activities CustomerActivity[]
+
+  @@index([phone])
+  @@index([normalizedPhone])
+  @@index([email])
+  @@index([normalizedEmail])
+  @@index([anonymizedAt])
+  /// Created as `DESC NULLS LAST` in the migration: the CRM default sort.
+  @@index([lastRequestAt(sort: Desc), createdAt(sort: Desc), id], map: "Customer_lastRequestAt_idx")
+  @@index([lastName, firstName])
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_lastName_trgm_idx")
+  @@index([middleName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_middleName_trgm_idx")
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_phone_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_email_trgm_idx")
+  @@index([company(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_company_trgm_idx")
+}
+
+model CustomerActivity {
+  id         String               @id @default(cuid())
+  customerId String
+  userId     String?
+  type       CustomerActivityType
+  data       Json?
+  createdAt  DateTime             @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User?    @relation("CustomerActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+  @@index([userId])
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  login              String    @unique
+  email              String?   @unique
+  passwordHash       String
+  role               UserRole  @default(MANAGER)
+  isActive           Boolean   @default(true)
+  twoFactorSecret    String?
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorEnabledAt DateTime?
+  lastTotpCounter    BigInt?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions             AuthSession[]
+  twoFactorChallenges  AuthTwoFactorChallenge[]
+  recoveryCodes        AuthRecoveryCode[]
+  assignedRequests     Request[]                @relation("AssignedManager")
+  requestComments      RequestComment[]         @relation("RequestCommentAuthor")
+  activities           RequestActivity[]        @relation("RequestActivityUser")
+  requestReadStates    RequestReadState[]
+  customerActivities   CustomerActivity[]       @relation("CustomerActivityUser")
+  backofficeActivities BackofficeActivity[]     @relation("BackofficeActivityUser")
+}
+
+model BackofficeActivity {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation("BackofficeActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId])
+  /// Journal filtered by an action or a scope (a list of actions), newest first.
+  @@index([action, createdAt(sort: Desc)])
+}
+
+model AuthSession {
+  id                String   @id @default(cuid())
+  tokenHash         String   @unique
+  userId            String
+  application       String   @default("UNKNOWN")
+  twoFactorVerified Boolean  @default(false)
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthTwoFactorChallenge {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  userId      String
+  type        String
+  application String   @default("UNKNOWN")
+  secret      String?
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthRecoveryCode {
+  id        String    @id @default(cuid())
+  codeHash  String    @unique
+  userId    String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  key          String    @id
+  failureCount Int       @default(0)
+  lockedUntil  DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([lockedUntil])
+}
+
+model Request {
+  id                String        @id @default(cuid())
+  sequence          Int           @unique @default(autoincrement())
+  number            String        @unique @default(cuid())
+  type              RequestType
+  status            RequestStatus @default(NEW)
+  customerId        String?
+  assignedManagerId String?
+
+  firstName  String
+  lastName   String
+  middleName String?
+  phone      String
+  email      String?
+  company    String?
+  comment    String?
+
+  responseDueAt    DateTime  @default(dbgenerated("(CURRENT_TIMESTAMP + '01:00:00'::interval)"))
+  firstRespondedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  customer         Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedManager  User?                    @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  cartRequest      CartRequest?
+  customRequest    CustomRequest?
+  wholesaleRequest WholesaleRequest?
+  comments         RequestComment[]
+  activities       RequestActivity[]
+  consents         Consent[]
+  readStates       RequestReadState[]
+  publicSubmission PublicRequestSubmission?
+
+  @@index([type])
+  @@index([status])
+  @@index([status, responseDueAt])
+  @@index([createdAt])
+  @@index([customerId])
+  @@index([assignedManagerId])
+  @@index([number(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_number_trgm_idx")
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_lastName_trgm_idx")
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_phone_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_email_trgm_idx")
+  @@index([company(ops: raw("gin_trgm_ops"))], type: Gin, map: "Request_company_trgm_idx")
+}
+
+model RequestReadState {
+  id        String   @id @default(cuid())
+  requestId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, userId])
+  @@index([userId])
+}
+
+model PublicRequestSubmission {
+  id          String   @id @default(cuid())
+  keyHash     String   @unique
+  payloadHash String
+  requestId   String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model PublicRequestRateLimit {
+  keyHash      String   @id
+  requestCount Int      @default(1)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model CartRequest {
+  id                     String       @id @default(cuid())
+  requestId              String       @unique
+  subtotal               Decimal      @db.Decimal(12, 2)
+  deliveryType           DeliveryType
+  paymentType            PaymentType
+  deliveryAddress        String?
+  deliveryAddressDetails Json?
+
+  request Request           @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  items   CartRequestItem[]
+}
+
+model CartRequestItem {
+  id            String  @id @default(cuid())
+  cartRequestId String
+  productId     String?
+  legacyId      Int?
+  productName   String
+  sku           String
+  price         Decimal @db.Decimal(12, 2)
+  quantity      Int
+  total         Decimal @db.Decimal(12, 2)
+
+  cartRequest CartRequest @relation(fields: [cartRequestId], references: [id], onDelete: Restrict)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([cartRequestId])
+  @@index([productId])
+}
+
+model CustomRequest {
+  id        String @id @default(cuid())
+  requestId String @unique
+
+  // Technical parameters are preserved only for historical requests created before 2026-08-31.
+  pistonDiameterMm   Int?
+  rodDiameterMm      Int?
+  strokeMm           Int?
+  collapsedLengthMm  Int?
+  maxPressureMpa     Decimal? @db.Decimal(6, 2)
+  nominalPressureMpa Decimal? @db.Decimal(6, 2)
+  quantity           Int?
+  technicalComment   String?
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Restrict)
+}
+
+model WholesaleRequest {
+  id        String  @id @default(cuid())
+  requestId String  @unique
+  message   String?
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Restrict)
+}
+
+model RequestComment {
+  id        String   @id @default(cuid())
+  requestId String
+  authorId  String?
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  author  User?   @relation("RequestCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@index([authorId])
+}
+
+model RequestActivity {
+  id        String              @id @default(cuid())
+  requestId String
+  userId    String?
+  type      RequestActivityType
+  data      Json?
+  createdAt DateTime            @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  user    User?   @relation("RequestActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@index([userId])
+}
+
+model Consent {
+  id              String        @id @default(cuid())
+  requestId       String
+  type            ConsentType
+  documentVersion String
+  documentHash    String
+  source          ConsentSource @default(WEB_FORM)
+  acceptedAt      DateTime      @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Restrict)
+
+  @@index([requestId])
+}

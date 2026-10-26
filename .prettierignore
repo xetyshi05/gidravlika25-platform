@@ -1,0 +1,15 @@
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.agents
+**/*.md
+.turbo
+e2e/test-results
+packages/api-contract/openapi.json
+packages/api-contract/src/schema.d.ts
+e2e/playwright-report
+backups
+pnpm-lock.yaml
+apps/*/public
+apps/api/prisma/migrations

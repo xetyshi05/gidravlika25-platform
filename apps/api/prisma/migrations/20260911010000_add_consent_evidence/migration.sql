@@ -1,0 +1,8 @@
+CREATE TYPE "ConsentSource" AS ENUM ('WEB_FORM', 'LEGACY_IMPORT');
+
+ALTER TABLE "Consent"
+ADD COLUMN "documentHash" TEXT NOT NULL DEFAULT 'legacy-unverified',
+ADD COLUMN "source" "ConsentSource" NOT NULL DEFAULT 'LEGACY_IMPORT';
+
+ALTER TABLE "Consent" ALTER COLUMN "documentHash" DROP DEFAULT;
+ALTER TABLE "Consent" ALTER COLUMN "source" SET DEFAULT 'WEB_FORM';

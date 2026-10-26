@@ -1,0 +1,22 @@
+.git
+.github
+.codex
+node_modules
+.pnpm-store
+.turbo
+**/.next
+**/dist
+**/coverage
+**/*.log
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+backups
+# Database dumps next to the repository root (REPO-01); migrations stay in apps/api/prisma.
+*.sql
+*.dump
+.DS_Store
+**/.local

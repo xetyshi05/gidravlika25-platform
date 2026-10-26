@@ -1,0 +1,2 @@
+ALTER TABLE "AuthSession"
+ADD COLUMN "application" TEXT NOT NULL DEFAULT 'UNKNOWN';

@@ -1,0 +1,415 @@
+@import "tailwindcss";
+
+:root {
+  --background: #111315;
+  --foreground: #f4f4f5;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: #111315;
+  --color-sidebar: #17191c;
+  --color-surface: #1d2024;
+  --color-surface-raised: #25292e;
+  --color-field: #191c20;
+  --color-line: #343940;
+  --color-brand: #d1010c;
+  --color-brand-dark: #a70009;
+  --color-brand-soft: #3b171b;
+  --color-copy: #f4f4f5;
+  --color-copy-muted: #969da7;
+  --color-copy-faint: #6b727c;
+  --font-sans: var(--font-manrope);
+  --font-days: var(--font-days-one);
+}
+* {
+  border-color: var(--color-line);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), Arial, sans-serif;
+}
+::selection {
+  background: #d1010c;
+  color: white;
+}
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+button,
+a,
+input,
+select,
+textarea {
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+input,
+select,
+textarea {
+  outline: none;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #d1010c;
+  box-shadow: none;
+}
+.bo-login :where(button, input:not([type="checkbox"]), select, textarea),
+.bo-login [class*="border"] {
+  border-radius: 0.25rem;
+}
+.bo-checkbox {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid #555d67;
+  border-radius: 4px;
+  background: #191c20;
+  color: transparent;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.bo-checkbox:hover {
+  border-color: #d1010c;
+}
+.bo-checkbox-checked {
+  border-color: #d1010c;
+  background: #d1010c;
+  color: white;
+}
+table .bo-checkbox {
+  display: grid;
+  margin: 0 auto;
+}
+/* Header cells must not clip the menus of filters and pagination selects.
+   Native resize requires overflow and is therefore unsuitable for these cells. */
+table th:not(:first-child) {
+  min-width: 96px;
+}
+.bo-column-resize {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: -5px;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+.bo-column-resize::after {
+  content: "";
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  left: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+.bo-column-resize:hover::after,
+.bo-column-resize:focus-visible::after {
+  background: #d1010c;
+}
+.bo-select-chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  flex: none;
+}
+.bo-select-menu {
+  transform-origin: top;
+}
+.bo-select-menu-enter {
+  animation: select-menu-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bo-select-menu-leave {
+  pointer-events: none;
+  animation: select-menu-out 0.13s ease-in both;
+}
+.bo-filter-menu {
+  transform-origin: top left;
+}
+.bo-filter-menu-enter {
+  animation: filter-menu-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bo-filter-menu-leave {
+  pointer-events: none;
+  animation: filter-menu-out 0.14s ease-in both;
+}
+.bo-bulk-toolbar {
+  animation: bulk-toolbar-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bo-bulk-menu {
+  transform-origin: top left;
+  animation: filter-menu-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bo-bulk-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--color-copy-muted);
+  font-size: 13px;
+  text-align: left;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+.bo-bulk-menu-item:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-copy);
+}
+.bo-bulk-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.bo-bulk-action-card {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 13px;
+  color: var(--color-copy);
+  text-align: left;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+.bo-bulk-action-card:hover {
+  border-color: #555d67;
+  background: var(--color-surface-raised);
+}
+.bo-bulk-action-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.bo-bulk-action-card span {
+  display: grid;
+  gap: 3px;
+}
+.bo-bulk-action-card strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.bo-bulk-action-card small {
+  color: var(--color-copy-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.bo-global-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 15rem;
+  border: 1px solid #41474f;
+  border-radius: 6px;
+  background: #25292e;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.28);
+  color: #d5d9df;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 6px 8px;
+  pointer-events: none;
+  animation: tooltip-in 0.14s ease-out both;
+}
+.bo-global-tooltip::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: #25292e;
+}
+.bo-global-tooltip-top::after {
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid #41474f;
+  border-bottom: 1px solid #41474f;
+}
+.bo-global-tooltip-bottom::after {
+  left: 50%;
+  top: -4px;
+  transform: translateX(-50%) rotate(225deg);
+  border-right: 1px solid #41474f;
+  border-bottom: 1px solid #41474f;
+}
+.bo-global-tooltip-left::after {
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+  border-right: 1px solid #41474f;
+  border-bottom: 1px solid #41474f;
+}
+.bo-toast-enter {
+  animation: toast-in 0.28s ease-out both;
+}
+.bo-toast-leave {
+  animation: toast-out 0.24s ease-in both;
+}
+.bo-modal-backdrop {
+  animation: fade-in 0.2s ease-out both;
+}
+.bo-modal-card {
+  animation: modal-in 0.24s ease-out both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes table-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+@keyframes select-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes select-menu-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+@keyframes filter-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes filter-menu-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+@keyframes bulk-toolbar-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.flex.h-10 > div > div > button {
+  height: 38px;
+  border: 0;
+  border-right: 1px solid var(--color-line);
+  border-radius: 5px 0 0 5px;
+}
+.backoffice-nav-active {
+  border-left-color: var(--color-brand) !important;
+}
+
+.a11y-skip-link {
+  position: fixed;
+  z-index: 1100;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-200%);
+  border: 2px solid var(--color-brand);
+  border-radius: 4px;
+  background: var(--color-copy);
+  padding: 12px 16px;
+  color: var(--color-brand-dark);
+  font-weight: 700;
+}
+.a11y-skip-link:focus {
+  transform: translateY(0);
+}
+:where(a, button, input, select, textarea, [tabindex]):focus {
+  box-shadow: none !important;
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

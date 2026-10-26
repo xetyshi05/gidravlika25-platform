@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: #d1010c;
+  --color-brand-dark: #a70009;
+  --color-brand-soft: #ffe0e1;
+  --font-sans: var(--font-manrope);
+  --font-days: var(--font-days-one);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: #d1010c;
+  color: #ffffff;
+}
+
+a,
+button {
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+main :where(button, input:not([type="checkbox"]), select, textarea),
+main [class*="border"] {
+  border-radius: 0.25rem;
+}
+
+@keyframes crm-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes crm-modal-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes crm-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes crm-modal-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+.crm-modal-backdrop {
+  animation: crm-modal-backdrop-in 180ms ease-out both;
+}
+.crm-modal-backdrop-closing {
+  animation-name: crm-modal-backdrop-out;
+}
+.crm-modal-panel {
+  animation: crm-modal-panel-in 180ms ease-out both;
+}
+.crm-modal-panel-closing {
+  animation-name: crm-modal-panel-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .crm-modal-backdrop,
+  .crm-modal-panel {
+    animation-duration: 1ms;
+  }
+}
+
+.a11y-skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 0.75rem;
+  left: 0.75rem;
+  transform: translateY(-200%);
+  background: white;
+  border: 2px solid #b8000a;
+  padding: 0.75rem 1rem;
+  color: #b8000a;
+  font-weight: 700;
+}
+
+.a11y-skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus {
+  box-shadow: none !important;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #b8000a !important;
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea, button[class*="border"]):focus-visible {
+  outline: none !important;
+}

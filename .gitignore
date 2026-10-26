@@ -1,0 +1,32 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Framework and build output
+.turbo/
+**/.next/
+**/dist/
+**/build/
+**/coverage/
+*.tsbuildinfo
+
+# Browser E2E results
+e2e/test-results/
+e2e/playwright-report/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Production database backups and dumps: never in the repository
+backups/
+/*.sql
+*.dump
+
+# Local tooling and operating-system files
+.DS_Store
+*.log
+.vercel/
+.local/

@@ -1,0 +1,29 @@
+# Throwaway infrastructure of the browser E2E stand (TEST-01): PostgreSQL and
+# S3 (S3Mock) on their own ports; data lives only as long as the containers.
+# Ports match e2e/environment.mjs.
+name: gidravlika-e2e
+
+services:
+  postgres:
+    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    environment:
+      POSTGRES_DB: gidravlika_e2e
+      POSTGRES_USER: gidravlika
+      POSTGRES_PASSWORD: gidravlika_e2e_password
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gidravlika", "-d", "gidravlika_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # S3Mock: no credentials checked, objects readable without them (public bucket).
+  s3:
+    image: adobe/s3mock:5.2.3@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: gidravlika-e2e
+    ports:
+      - "127.0.0.1:9100:9090"

@@ -1,0 +1,4 @@
+services:
+  nginx:
+    volumes:
+      - ./deploy/nginx/bootstrap.conf:/etc/nginx/templates/default.conf.template:ro

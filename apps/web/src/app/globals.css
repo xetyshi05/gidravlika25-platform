@@ -1,0 +1,546 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: #d1010c;
+  --color-brand-dark: #a70009;
+  --color-brand-soft: #ffe0e1;
+  --font-sans: var(--font-manrope);
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: #d1010c;
+  color: #ffffff;
+}
+
+a,
+button,
+summary {
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+main :where(button, input:not([type="checkbox"]):not([type="range"]), select, textarea),
+main a[class*="border"],
+main a[class*="bg-"],
+main [class*="border"][class*="bg-"] {
+  border-radius: 0.25rem;
+}
+
+.quantity-control {
+  display: inline-grid;
+  grid-template-columns: 2.5rem minmax(6.5rem, auto) 2.5rem;
+  min-height: 2.75rem;
+  width: fit-content;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  color: var(--color-brand);
+}
+
+.quantity-control-action {
+  border: 0;
+  border-radius: 0;
+  background: var(--color-brand);
+}
+
+.quantity-control-value {
+  border-radius: 0;
+  background: transparent;
+}
+
+.quantity-control-action:hover {
+  background: var(--color-brand-dark);
+}
+
+.quantity-control--compact {
+  grid-template-columns: 2.25rem minmax(6rem, auto) 2.25rem;
+  min-height: 2.25rem;
+}
+
+.quantity-control--full-width {
+  width: 100%;
+}
+
+.cart-item {
+  grid-template-areas: "image" "details" "price" "controls";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cart-item-image {
+  grid-area: image;
+}
+
+.cart-item-details {
+  grid-area: details;
+}
+
+.cart-item-price {
+  grid-area: price;
+}
+
+.cart-item-controls {
+  grid-area: controls;
+}
+
+.cart-quantity-control.quantity-control {
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  width: 13rem;
+  max-width: calc(100% - 3.25rem);
+}
+
+@media (min-width: 900px) {
+  .cart-item {
+    grid-template-areas:
+      "image details quantity price"
+      "image details quantity remove";
+    grid-template-columns: 7rem minmax(0, 1fr) 13rem 10rem;
+    align-items: center;
+    column-gap: 1.5rem;
+    row-gap: 0.75rem;
+  }
+
+  .cart-item-controls {
+    display: contents;
+  }
+
+  .cart-quantity-control.quantity-control {
+    grid-area: quantity;
+    max-width: 100%;
+  }
+
+  .cart-item-price {
+    text-align: right;
+  }
+
+  .cart-item-remove {
+    grid-area: remove;
+    align-self: end;
+    justify-self: end;
+  }
+}
+
+@keyframes checkout-success-check-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.checkout-success-check {
+  animation: checkout-success-check-enter 480ms ease-out both;
+  color: var(--color-brand);
+}
+
+@keyframes checkout-success-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.checkout-success-check-path {
+  stroke-dasharray: 42;
+  stroke-dashoffset: 42;
+  animation: checkout-success-check-draw 900ms 180ms ease-out forwards;
+}
+
+@keyframes checkout-success-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.checkout-success-content-enter {
+  animation: checkout-success-content-enter 650ms ease-out both;
+}
+
+.product-purchase-control {
+  height: 2.5rem;
+  min-height: 2.5rem;
+}
+
+.product-purchase-control.quantity-control {
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  min-height: 2.5rem;
+  width: 100%;
+}
+
+.catalog-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.catalog-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+
+.catalog-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 9999px;
+  background: #d1010c;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.catalog-range::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+
+.catalog-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 9999px;
+  background: #d1010c;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+@keyframes production-slide-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes production-slide-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.production-slide-enter,
+.production-slide-exit {
+  animation-duration: 280ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.production-slide-enter {
+  animation-name: production-slide-enter;
+}
+.production-slide-exit {
+  animation-name: production-slide-exit;
+}
+
+@keyframes modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-backdrop-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-dialog-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.99);
+  }
+}
+
+@keyframes mobile-navigation-exit {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes mobile-navigation-enter {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-backdrop-enter {
+  animation: modal-backdrop-enter 180ms ease-out both;
+}
+.modal-dialog-enter {
+  animation: modal-dialog-enter 220ms ease-out both;
+}
+.modal-backdrop-exit {
+  animation: modal-backdrop-exit 180ms ease-in both;
+}
+.modal-dialog-exit {
+  animation: modal-dialog-exit 180ms ease-in both;
+}
+.mobile-navigation-exit {
+  animation: mobile-navigation-exit 260ms ease-in both;
+}
+.mobile-navigation-enter {
+  animation: mobile-navigation-enter 260ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .production-slide-enter,
+  .production-slide-exit,
+  .modal-backdrop-enter,
+  .modal-dialog-enter,
+  .modal-backdrop-exit,
+  .modal-dialog-exit {
+    animation: none;
+  }
+
+  .mobile-navigation-exit {
+    animation: none;
+  }
+
+  .mobile-navigation-enter {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+.a11y-skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 0.75rem;
+  left: 0.75rem;
+  transform: translateY(-200%);
+  border-radius: 0.25rem;
+  background: #fff;
+  border: 2px solid #b8000a;
+  padding: 0.75rem 1rem;
+  color: #b8000a;
+  font-weight: 700;
+}
+
+.a11y-skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus {
+  box-shadow: none !important;
+}
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid #b8000a !important;
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea):focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+}
+
+form label.grid {
+  align-content: start;
+}
+
+form :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea)[aria-invalid="true"] {
+  border-color: var(--color-brand);
+  background-color: #fff1f2;
+}
+
+.consent-link {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition:
+    color 200ms ease-out,
+    text-decoration-color 200ms ease-out;
+}
+
+.consent-link:hover,
+.consent-link:focus-visible {
+  color: var(--color-brand-dark);
+  text-decoration-color: currentColor;
+}
+
+.consent-checkbox {
+  appearance: none;
+  border: 1px solid #94a3b8;
+  border-radius: 0.25rem;
+  background-color: white;
+  cursor: pointer;
+  transition:
+    border-color 200ms ease-out,
+    background-color 200ms ease-out;
+}
+
+.consent-checkbox:hover,
+.consent-checkbox[aria-invalid="true"] {
+  border-color: var(--color-brand);
+}
+
+.consent-checkbox[aria-invalid="true"] {
+  background-color: #fff1f2;
+}
+
+.consent-checkbox:checked {
+  border-color: var(--color-brand);
+  background-color: var(--color-brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 8 3 3 7-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.consent-checkbox:focus-visible {
+  outline: 2px solid var(--color-brand) !important;
+  outline-offset: 2px;
+}
+
+/*
+ * ALTCHA "Я не робот" widget (components/forms/spam-protection.tsx) in the
+ * site style: small rounded corners like the form fields, brand-red check mark. All
+ * colors are explicit because the widget follows the OS dark mode by default,
+ * while the site has a light theme only.
+ */
+altcha-widget {
+  --altcha-color-base: transparent;
+  --altcha-color-base-content: oklch(37.2% 0.044 257.287);
+  --altcha-color-neutral: oklch(86.9% 0.022 252.894);
+  --altcha-color-neutral-content: oklch(55.4% 0.046 257.417);
+  --altcha-color-primary: var(--color-brand);
+  --altcha-color-primary-content: #ffffff;
+  --altcha-color-success: var(--color-brand);
+  --altcha-color-success-content: #ffffff;
+  --altcha-color-error: var(--color-brand-dark);
+  --altcha-color-error-content: #ffffff;
+  --altcha-border-color: oklch(86.9% 0.022 252.894);
+  --altcha-border-width: 1px;
+  --altcha-border-radius: 0.25rem;
+  --altcha-checkbox-border-color: oklch(70.4% 0.04 256.788);
+  --altcha-checkbox-border-width: 1px;
+  --altcha-checkbox-border-radius: 0.25rem;
+  --altcha-checkbox-size: 18px;
+  --altcha-input-background-color: #ffffff;
+  --altcha-input-border-radius: 0.25rem;
+  --altcha-spinner-color: var(--color-brand);
+  --altcha-max-width: 100%;
+  --altcha-padding: 0.5rem 1rem;
+  --altcha-control-height: 3rem;
+  --altcha-transition-duration: 0.3s;
+  --altcha-shadow: drop-shadow(0 12px 24px oklch(20.8% 0.042 265.755 / 0.12));
+  width: fit-content;
+  max-width: 100%;
+}
+
+altcha-widget.spam-protection--checkout {
+  --altcha-control-height: 2.75rem;
+}
+
+altcha-widget .altcha-main {
+  min-height: var(--altcha-control-height);
+  justify-content: center;
+}
+
+altcha-widget .altcha-checkbox-wrap {
+  gap: 0.75rem;
+}
+
+altcha-widget .altcha-checkbox-wrap label {
+  color: oklch(37.2% 0.044 257.287);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+altcha-widget .altcha-checkbox input:not(:checked):hover {
+  border-color: var(--color-brand);
+}
+
+/* The site hides the focus ring of inputs; this checkbox needs one for keyboard users. */
+altcha-widget .altcha-checkbox input:focus-visible {
+  outline: 2px solid #b8000a !important;
+  outline-offset: 2px;
+}
+
+altcha-widget .altcha-error {
+  color: var(--color-brand-dark);
+  font-size: 0.75rem;
+  font-weight: 500;
+}

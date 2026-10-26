@@ -1,0 +1,1 @@
+ALTER TABLE "SiteMedia" ADD COLUMN "showInMainGallery" BOOLEAN NOT NULL DEFAULT false;

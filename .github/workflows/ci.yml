@@ -1,0 +1,236 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+        env:
+          POSTGRES_DB: gidravlika_test
+          POSTGRES_USER: gidravlika
+          POSTGRES_PASSWORD: gidravlika_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gidravlika -d gidravlika_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://gidravlika:gidravlika_test_password@localhost:5432/gidravlika_test?schema=public
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 10.12.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
+
+      # SUP-01: licenses of production npm packages (config/license-policy.json).
+      - name: License policy
+        run: pnpm licenses:check
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Validate Prisma schema
+        working-directory: apps/api
+        run: pnpm exec prisma validate
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: pnpm exec prisma generate
+
+      - name: Check migration drift
+        working-directory: apps/api
+        run: pnpm test:migrations
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # ARCH-01: packages/api-contract must match the API's controllers and DTOs.
+      - name: API contract is up to date
+        run: pnpm api:contract:check
+
+      - name: Unit tests
+        working-directory: apps/api
+        run: pnpm exec jest --runInBand
+
+      - name: Web catalog tests
+        run: pnpm --filter web test
+
+      - name: Backoffice tests
+        run: pnpm --filter backoffice test
+
+      - name: CRM tests
+        run: pnpm --filter crm test
+
+      - name: PostgreSQL E2E tests
+        working-directory: apps/api
+        # Production roles: migrations as migrator, tests as DML-only app_runtime.
+        env:
+          E2E_DATABASE_ROLES: "true"
+        run: pnpm test:e2e
+
+      # DOC-01: the demo data of docs/onboarding.md must keep up with the schema.
+      - name: Demo data seed
+        working-directory: apps/api
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm db:seed
+          pnpm db:seed
+
+      - name: Nginx perimeter test
+        run: ./deploy/scripts/test-nginx-perimeter.sh
+
+      - name: Backup test
+        run: ./deploy/scripts/test-backup.sh
+
+      - name: Production build
+        run: pnpm build
+
+  # TEST-01: the three apps in a real browser against the API, PostgreSQL and S3
+  # (e2e/compose.yml), with mock 2FA and a mock background-removal worker.
+  browser-e2e:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 10.12.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start PostgreSQL and S3
+        run: pnpm e2e:infra
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://unused:unused@localhost:5432/unused?schema=public
+        run: pnpm exec prisma generate
+
+      - name: Build apps for the stand
+        run: pnpm e2e:build
+
+      - name: Install Chromium
+        run: pnpm --filter e2e exec playwright install --with-deps chromium
+
+      - name: Browser E2E tests
+        run: pnpm e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
+  # REL-02: build exactly what deploy.sh builds and run it the same way.
+  images:
+    name: Production images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Load CI environment
+        run: |
+          grep -Ev '^(#|$)' deploy/ci/production-images.env >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build production images
+        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6.10.0
+        with:
+          source: .
+          files: compose.production.yml
+          targets: api,web,crm,backoffice,image-worker,backup
+          load: true
+          set: |
+            api.cache-from=type=gha,scope=api
+            api.cache-to=type=gha,scope=api,mode=max
+            web.cache-from=type=gha,scope=web
+            web.cache-to=type=gha,scope=web,mode=max
+            crm.cache-from=type=gha,scope=crm
+            crm.cache-to=type=gha,scope=crm,mode=max
+            backoffice.cache-from=type=gha,scope=backoffice
+            backoffice.cache-to=type=gha,scope=backoffice,mode=max
+            image-worker.cache-from=type=gha,scope=image-worker
+            image-worker.cache-to=type=gha,scope=image-worker,mode=max
+            backup.cache-from=type=gha,scope=backup
+            backup.cache-to=type=gha,scope=backup,mode=max
+
+      - name: Container smoke test
+        run: ./deploy/scripts/test-production-images.sh --no-build
+
+      # SUP-01: what every production image contains (npm, Python and OS
+      # packages) as CycloneDX, kept with the run; Python licenses checked.
+      - name: SBOM of production images
+        env:
+          SYFT_IMAGE: anchore/syft:v1.52.0@sha256:500e2d872ac019436926e8322b4fc1f39441d94d21f6f4046c6ff29b30e8cb02
+        run: |
+          mkdir -p sbom
+          for name in api web crm backoffice image-worker postgres-backup; do
+            docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
+              "$CONTAINER_IMAGE_PREFIX/$name:$IMAGE_TAG" --output cyclonedx-json --quiet >"sbom/$name.cdx.json"
+          done
+
+      - name: License policy of the image-worker
+        run: node config/check-licenses.mjs sbom sbom/image-worker.cdx.json
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom
+          path: sbom
+          retention-days: 90

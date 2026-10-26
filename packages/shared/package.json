@@ -1,0 +1,23 @@
+{
+  "name": "@gidravlika25/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./fetch-with-timeout": {
+      "types": "./src/fetch-with-timeout.d.ts",
+      "default": "./src/fetch-with-timeout.js"
+    },
+    "./request-contracts": {
+      "types": "./src/request-contracts.d.ts",
+      "default": "./src/request-contracts.js"
+    },
+    "./use-modal-accessibility": {
+      "types": "./src/use-modal-accessibility.d.ts",
+      "default": "./src/use-modal-accessibility.js"
+    }
+  },
+  "peerDependencies": {
+    "react": "19.2.8"
+  }
+}

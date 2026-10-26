@@ -1,0 +1,8 @@
+ALTER TABLE "CustomRequest"
+  ALTER COLUMN "pistonDiameterMm" DROP NOT NULL,
+  ALTER COLUMN "rodDiameterMm" DROP NOT NULL,
+  ALTER COLUMN "strokeMm" DROP NOT NULL,
+  ALTER COLUMN "collapsedLengthMm" DROP NOT NULL,
+  ALTER COLUMN "maxPressureMpa" DROP NOT NULL,
+  ALTER COLUMN "nominalPressureMpa" DROP NOT NULL,
+  ALTER COLUMN "quantity" DROP NOT NULL;
