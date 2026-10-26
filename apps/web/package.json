@@ -13,11 +13,11 @@
   "dependencies": {
     "@gidravlika25/api-contract": "workspace:*",
     "@gidravlika25/shared": "workspace:*",
-    "@tabler/icons-react": "^3.46.0",
-    "altcha": "3.2.2",
+    "@tabler/icons-react": "^3.49.0",
+    "altcha": "3.5.0",
     "next": "16.4.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
