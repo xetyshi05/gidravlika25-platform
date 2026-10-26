@@ -294,7 +294,7 @@ services:
     networks: [application]
 
   nginx:
-    image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    image: nginx:1.31-alpine@sha256:a3554c0d0b48177b1413c26e01f695334428020d9df01243fbae3e11cfd17417
     restart: unless-stopped
     environment:
       SITE_HOST: ${SITE_HOST}
@@ -339,7 +339,7 @@ services:
     networks: [application]
 
   certbot:
-    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
     profiles: [tools]
     volumes:
       - certbot_certs:/etc/letsencrypt
@@ -350,7 +350,7 @@ services:
     networks: [application]
 
   certbot-renew:
-    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
     restart: unless-stopped
     entrypoint: /bin/sh
     command:
