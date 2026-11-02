@@ -8,7 +8,7 @@ x-default-logging: &default-logging
 
 services:
   postgres:
-    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -31,7 +31,7 @@ services:
   # Creates and realigns database roles and object ownership (INF-01). Runs as
   # the PostgreSQL superuser before every migration; idempotent.
   db-roles:
-    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     restart: "no"
     environment:
       PGHOST: postgres
@@ -294,7 +294,7 @@ services:
     networks: [application]
 
   nginx:
-    image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    image: nginx:1.31-alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606
     restart: unless-stopped
     environment:
       SITE_HOST: ${SITE_HOST}
@@ -339,7 +339,7 @@ services:
     networks: [application]
 
   certbot:
-    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    image: certbot/certbot:v5.9.0@sha256:bc93cb710b413e6b456d622f9b0133b3e109c0a78c2ed9976af43d209b0a1805
     profiles: [tools]
     volumes:
       - certbot_certs:/etc/letsencrypt
@@ -350,7 +350,7 @@ services:
     networks: [application]
 
   certbot-renew:
-    image: certbot/certbot:v5.4.0@sha256:c23159d30afdd9c97960578aa4654f5901de6cae394958f894074dedd55e599d
+    image: certbot/certbot:v5.9.0@sha256:bc93cb710b413e6b456d622f9b0133b3e109c0a78c2ed9976af43d209b0a1805
     restart: unless-stopped
     entrypoint: /bin/sh
     command:
